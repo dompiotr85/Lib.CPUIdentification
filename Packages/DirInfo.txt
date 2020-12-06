@@ -1,0 +1,6 @@
+Lib.CPUIdentification package directory; version-specific packages are located in
+the respective subdirectories.
+
+Files located in Lib.CPUIdentification/Packages:
+
+Lib_CPUIdentification_Dxy.groupproj:  Project group file for Delphi version x.y packages

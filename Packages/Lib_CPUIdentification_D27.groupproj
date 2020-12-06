@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{4B957663-AC11-4348-BEBE-22B4E22E9125}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="D27\Lib_CPUIdentification.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="D27\CPUInformation.dproj">
+            <Dependencies>D27\Lib_CPUIdentification.dproj</Dependencies>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Lib_CPUIdentification">
+        <MSBuild Projects="D27\Lib_CPUIdentification.dproj"/>
+    </Target>
+    <Target Name="Lib_CPUIdentification:Clean">
+        <MSBuild Projects="D27\Lib_CPUIdentification.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Lib_CPUIdentification:Make">
+        <MSBuild Projects="D27\Lib_CPUIdentification.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="CPUInformation" DependsOnTargets="Lib_CPUIdentification">
+        <MSBuild Projects="D27\CPUInformation.dproj"/>
+    </Target>
+    <Target Name="CPUInformation:Clean" DependsOnTargets="Lib_CPUIdentification:Clean">
+        <MSBuild Projects="D27\CPUInformation.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="CPUInformation:Make" DependsOnTargets="Lib_CPUIdentification:Make">
+        <MSBuild Projects="D27\CPUInformation.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Lib_CPUIdentification;CPUInformation"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Lib_CPUIdentification:Clean;CPUInformation:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Lib_CPUIdentification:Make;CPUInformation:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
