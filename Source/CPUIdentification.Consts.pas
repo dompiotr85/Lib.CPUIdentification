@@ -10,16 +10,12 @@ unit CPUIdentification.Consts;
 interface
 
 resourcestring
-  SDeleteLeaf_IndexOutOfBounds =
-    'TCPUIdentification.DeleteLeaf: Index (%d) out of bounds!';
-  SGetLeaf_IndexOutOfBounds =
-    'TCPUIdentifacation.GetLeaf: Index (%d) out of bounds!';
-  SInitialize_CannotDetermineCPUSpeed =
-    'TCPUIdentificationEx.Initialize: Can not determine CPU speed!';
-  SInitialize_LogicalProcessorNotAvailable =
-    'TCPUIdentificationEx.Initialize: Logical processor #%d not available!';
-  SGetProcessAffinityMaskFailed =
-    'GetProcessAffinityMask failed with error 0x%.8x!';
+  SSystemError = '%s failed with error %d.';
+  SDeleteLeaf_IndexOutOfBounds = 'TCPUIdentification.DeleteLeaf: Index (%d) out of bounds!';
+  SGetLeaf_IndexOutOfBounds = 'TCPUIdentifacation.GetLeaf: Index (%d) out of bounds!';
+  SInitialize_CannotDetermineCPUSpeed = 'TCPUIdentificationEx.Initialize: Can not determine CPU speed!';
+  SInitialize_LogicalProcessorNotAvailable = 'TCPUIdentificationEx.Initialize: Logical processor #%d not available!';
+  SGetProcessAffinityMaskFailed = 'GetProcessAffinityMask failed with error 0x%.8x!';
 
 implementation
 

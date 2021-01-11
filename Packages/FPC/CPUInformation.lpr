@@ -1,21 +1,12 @@
-{===============================================================================
-
-  This Source Code Form is subject to the terms of the Mozilla Public
-  License, v. 2.0. If a copy of the MPL was not distributed with this
-  file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
-===============================================================================}
-
 program CPUInformation;
 
-{$INCLUDE jedi\jedi.inc}
-
-{$APPTYPE CONSOLE}
-
-{$R *.res}
+{$mode objfpc}{$H+}
 
 uses
-  {$IFDEF HAS_UNITSCOPE}System.SysUtils{$ELSE}SysUtils{$ENDIF},
+  {$IFDEF UNIX}{$IFDEF UseCThreads}
+  cthreads,
+  {$ENDIF}{$ENDIF}
+  SysUtils,
   CPUIdentification;
 
 var
@@ -45,24 +36,18 @@ begin
       Writeln('Type: ' + CPUIdent.Info.ProcessorType.ToString);
       Writeln('Family: ' + CPUIdent.Info.ProcessorFamily.ToHexString(2) + 'h');
       Writeln('Model: ' + CPUIdent.Info.ProcessorModel.ToHexString(2) + 'h');
-      Writeln(
-        'Stepping: ' + CPUIdent.Info.ProcessorStepping.ToHexString(2) + 'h');
+      Writeln('Stepping: ' + CPUIdent.Info.ProcessorStepping.ToHexString(2) + 'h');
 
       { Write calculated CPU raw frequency. }
-      Writeln(
-        'Raw Frequeny: ' + CPUIdent.FreqencyInfo.RawFreq.ToString + ' Mhz');
+      Writeln('Raw Frequeny: ' + CPUIdent.FreqencyInfo.RawFreq.ToString + ' Mhz');
 
       { Write CPU physical and logical cores. }
       Writeln('Physical Cores: ' + CPUIdent.PhysicalCoreCount.ToString);
       Writeln('Logical Cores: ' + CPUIdent.LogicalCoreCount.ToString);
 
       { Write CPU HTT and Hardware HTT support. }
-      Writeln(
-        'Hyper-Threading Technology: ' +
-        BoolToYesNo(CPUIdent.Info.ProcessorFeatures.HTT));
-      Writeln(
-        'Hardware Hyper-Threading Technology: ' +
-        BoolToYesNo(CPUIdent.PhysicalCoreCount <> CPUIdent.LogicalCoreCount));
+      Writeln('Hyper-Threading Technology: ' + BoolToYesNo(CPUIdent.Info.ProcessorFeatures.HTT));
+      Writeln('Hardware Hyper-Threading Technology: ' + BoolToYesNo(CPUIdent.PhysicalCoreCount <> CPUIdent.LogicalCoreCount));
 
       { Prepare CPU features string. }
       FeaturesStr := '';

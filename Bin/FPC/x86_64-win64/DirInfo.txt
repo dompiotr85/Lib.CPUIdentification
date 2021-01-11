@@ -1,0 +1,1 @@
+This directory is intended as a common place for .exe files of FPC/Lazarus applications.

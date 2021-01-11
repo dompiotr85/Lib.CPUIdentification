@@ -4,9 +4,10 @@
 
 ## What's Lib.CPUIdentification
 
-A simple Delphi library that allows to discover details related to the
-processor using processor supplementary instruction called CPUID. It can work
-for both x86 and x64 architectures.
+Small Delphi/FPC/Lazarus library designed to provide some basic parsed information
+(mainly CPU features) obtained by Processor Supplementary Instruction called CPUID on
+x86(-64) processors. Should be compatible with any Windows and Linux system running on
+x86(-64) architecture.
 
 ## Clone with GIT
 

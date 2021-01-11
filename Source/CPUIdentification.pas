@@ -6,57 +6,60 @@
 
 ===============================================================================}
 
-{$INCLUDE jedi\jedi.inc}
+{-------------------------------------------------------------------------------
+ Lib.CPUIdentification
+
+ Small library designed to provide some basic parsed information (mainly CPU
+ features) obtained by Processor Supplementary Instruction called CPUID on
+ x86(-64) processors. Should be compatible with any Windows and Linux system
+ running on x86(-64) architecture.
+
+ Version 0.1.3
+
+ Copyright (c) 2018-2021, Piotr Domañski
+
+ Last change:
+   11-01-2021
+
+ Changelog:
+   For detailed changelog and history please refer to this git repository:
+     https://github.com/dompiotr85/Lib.CPUIdentification
+
+ Contacts:
+   Piotr Domañski (dom.piotr.85@gmail.com)
+
+ Dependencies:
+   - JEDI common files (https://github.com/project-jedi/jedi)
+   - Lib.TypeDefinitions (https://github.com/dompiotr85/Lib.TypeDefinitions)
+   - Lib.BasicClasses (https://github.com/dompiotr85/Lib.BasicClasses)
+
+ Sources:
+   - https://en.wikipedia.org/wiki/CPUID
+   - http://sandpile.org/x86/cpuid.htm
+   - Intel® 64 and IA-32 Architectures Software Developer’s Manual (September
+     2016)
+   - AMD CPUID Specification; Publication #25481 Revision 2.34 (September 2010)
+-------------------------------------------------------------------------------}
 
 {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
 /// <summary>
-///   A simple library that allows to discover details related to the CPU
-///   (Central Processing Unit) using Processor Supplementary Instruction
-///   called CPUID. It can work for both x86 and x64 architectures.
+///   Small library designed to provide some basic parsed information (mainly
+///   CPU features) obtained by Processor Supplementary Instruction called CPUID
+///   on x86(-64) processors. Should be compatible with any Windows and Linux
+///   system running on x86(-64) architecture.
 /// </summary>
-/// <remarks>
-///   <para>
-///     Dependencies:
-///   </para>
-///   <list type="bullet">
-///     <item>
-///       Lib.TypeDefinitions - github.com/dompiotr85/Lib.TypeDefinitions
-///     </item>
-///     <item>
-///       Lib.BasicClasses - github.com/dompiotr85/Lib.BasicClasses
-///     </item>
-///   </list>
-///   <para>
-///     Sources:
-///   </para>
-///   <list type="bullet">
-///     <item>
-///       Intel® 64 and IA-32 Architectures Software Developer’s Manual
-///       (May 2018)
-///     </item>
-///     <item>
-///       AMD CPUID Specification; Publication #25481 Revision 2.34
-///       (September 2010)
-///     </item>
-///     <item>
-///       <see href="https://en.wikipedia.org/wiki/CPUID" />
-///     </item>
-///     <item>
-///       <see href="http://sandpile.org/x86/cpuid.htm" />
-///     </item>
-///   </list>
-///   <para>
-///     Version 0.1.2
-///   </para>
-/// </remarks>
 {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 unit CPUIdentification;
 
-interface
+{$INCLUDE jedi\jedi.inc}
 
 {$IFDEF SUPPORTS_LEGACYIFEND}{$LEGACYIFEND ON}{$ENDIF}
 
-{$IF DEFINED(CPUx86_64) OR DEFINED(CPUX64)}
+{$IFDEF CID_PurePascal}
+ {$DEFINE PurePascal}
+{$ENDIF !CID_PurePascal}
+
+{$IF DEFINED(CPUX86_64) OR DEFINED(CPUX64)}
  {$DEFINE x64}
 {$ELSEIF DEFINED(CPU386)}
  {$DEFINE x86}
@@ -66,29 +69,77 @@ interface
 
 {$IF DEFINED(WINDOWS) OR DEFINED(MSWINDOWS)}
  {$DEFINE Windows}
+{$ELSEIF DEFINED(LINUX) AND DEFINED(FPC)}
+ {$DEFINE Linux}
 {$ELSE}
- {$IF NOT (DEFINED(UNIX) OR DEFINED(POSIX))}
-  {$MESSAGE FATAL 'Unsupported operating system!'}
- {$IFEND}
+ {$MESSAGE FATAL 'Unsupported operating system!'}
 {$IFEND}
+
+{$IFDEF FPC}
+ {.$MODE ObjFPC}
+ {$INLINE ON}
+ {$DEFINE CanInline}
+ {$ASMMODE Intel}
+ {$DEFINE FPC_DisableWarns}
+ {$MACRO ON}
+{$ELSE !FPC}
+ {$IF CompilerVersion >= 17}  // Delphi 2005+
+  {$DEFINE CanInline}
+ {$ELSE}
+  {$UNDEF CanInline}
+ {$IFEND}
+{$ENDIF !FPC}
+
+{$H+}
+{$M+}
 
 {$IFDEF PurePascal}
  {$MESSAGE WARN 'This unit cannot be compiled without ASM!'}
-{$ENDIF ~PurePascal}
+{$ENDIF !PurePascal}
 
-{$TYPEINFO ON}
+interface
 
 uses
   {$IFDEF HAS_UNITSCOPE}System.SysUtils{$ELSE}SysUtils{$ENDIF},
-  TypeDefinitions;
+  TypeDefinitions,
+  BasicClasses;
 
+{$IFDEF SUPPORTS_REGION}{$REGION 'CPUIdentification exceptions'}{$ENDIF}
 type
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   CPUIdentification exception used in this unit.
   /// </summary>
   {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
-  ECPUIdentification = Exception;
+  ECIDException = class(Exception);
+
+  {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
+  /// <summary>
+  ///   CPUIdentification System Error exception.
+  /// </summary>
+  {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
+  ECIDSystemError = class(ECIDException);
+
+  {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
+  /// <summary>
+  ///   CPUIdentification Index Out Of Bounds exception.
+  /// </summary>
+  {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
+  ECIDIndexOutOfBounds = class(ECIDException);
+{$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
+
+{- TCPUIdentification  - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+{$IFDEF SUPPORTS_REGION}{$REGION 'CPUIdentification types definition'}{$ENDIF}
+type
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIDResult definition'}{$ENDIF}
+  {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
+  /// <summary>
+  ///   Pointer to <see cref="CPUIdentification|TCPUIDResult" /> record.
+  /// </summary>
+  {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
+  PCPUIDResult = ^TCPUIDResult;
 
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
@@ -99,13 +150,16 @@ type
   TCPUIDResult = packed record
     EAX, EBX, ECX, EDX: UInt32;
   end;
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIDLeaf definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
-  ///   Pointer to <see cref="CPUIdentification|TCPUIDResult" /> record.
+  ///   Pointer to <see cref="CPUIdentification|TCPUIDLeaf" />
+  ///   record.
   /// </summary>
   {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
-  PCPUIDResult = ^TCPUIDResult;
+  PCPUIDLeaf = ^TCPUIDLeaf;
 
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
@@ -139,15 +193,6 @@ type
 
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
-  ///   Pointer to <see cref="CPUIdentification|TCPUIDLeaf">TCPUIDLead</see>
-  ///   record.
-  /// </summary>
-  {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
-  PCPUIDLeaf = ^TCPUIDLeaf;
-
-
-  {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
-  /// <summary>
   ///   List of CPUID leafs as dynamic array of
   ///   <see cref="CPUIdentification|TCPUIDLeaf" />.
   /// </summary>
@@ -157,12 +202,17 @@ type
 const
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
-  ///   NullLeaf is TCPUIDResult constant that hold 0 value for its all fields.
+  ///   NullLeaf is <see cref="CPUIdentification|TCPUIDResult" /> constant that
+  ///   hold 0 value for its all fields.
   /// </summary>
   {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
   NullLeaf: TCPUIDResult = (EAX: 0; EBX: 0; ECX: 0; EDX: 0);
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 type
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIDManufacturerID definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   Enumeration of known CPUID manufacturer ID.
@@ -259,7 +309,11 @@ type
     /// </summary>
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     mnVortex);
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
+  {- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIDInfo_AdditionalInfo definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   CPUID additional information record. It holds additional fields like
@@ -303,14 +357,18 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     LocalAPICID: Byte;
   end;
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
+  {- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIDInfo_Features definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   CPUID features record.
   /// </summary>
   {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
   TCPUIDInfo_Features = record
-    {-- Leaf 1, ECX register --------------------------------------------------}
+    {- Leaf 1, ECX register  - - - - - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -529,7 +587,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     HYPERVISOR: Boolean;
 
-    {-- Leaf 1, EDX register --------------------------------------------------}
+    {- Leaf 1, EDX register  - - - - - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -741,7 +799,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     PBE: Boolean;
 
-    {-- Leaf 7:0, EBX register ------------------------------------------------}
+    {- Leaf 7:0, EBX register  - - - - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -967,7 +1025,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     AVX512VL: Boolean;
 
-    {-- Leaf 7:0, ECX register ------------------------------------------------}
+    {- Leaf 7:0, ECX register  - - - - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1041,7 +1099,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     SGX_LC: Boolean;
 
-    {-- Leaf 7:0, EDX register ------------------------------------------------}
+    {- Leaf 7:0, EDX register  - - - - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1057,14 +1115,18 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     AVX512QFMA: Boolean;
   end;
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
+  {- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIDInfo_ExtendedFeatures definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   CPUID extended features record.
   /// </summary>
   {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
   TCPUIDInfo_ExtendedFeatures = record
-    {-- Leaf $80000001, ECX register ------------------------------------------}
+    {- Leaf $80000001, ECX register  - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1255,7 +1317,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     MON: Boolean;
 
-    {-- Leaf $80000001, EDX register ------------------------------------------}
+    {- Leaf $80000001, EDX register  - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1484,7 +1546,11 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     _3DNow: Boolean;
   end;
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
+  {- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIDInfo_SupportedExtensions definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   CPUID supported extensions record.
@@ -1722,14 +1788,18 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     AVX512BW: Boolean;
   end;
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
+  {- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIDInfo definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   CPUID information record.
   /// </summary>
   {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
   TCPUIDInfo = record
-    {-- Leaf 0x00000000 -------------------------------------------------------}
+    {- Leaf 0x00000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1745,7 +1815,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     ManufacturerIDString: String;
 
-    {-- Leaf 0x00000001 -------------------------------------------------------}
+    {- Leaf 0x00000001 - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1799,7 +1869,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     AdditionalInfo: TCPUIDInfo_AdditionalInfo;
 
-    {-- Leaf 0x00000001 and 0x00000007 ----------------------------------------}
+    {- Leaf 0x00000001 and 0x00000007  - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1808,7 +1878,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     ProcessorFeatures: TCPUIDInfo_Features;
 
-    {-- Leaf 0x80000001 -------------------------------------------------------}
+    {- Leaf 0x80000001 - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1817,7 +1887,7 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     ExtendedProcessorFeatures: TCPUIDInfo_ExtendedFeatures;
 
-    {-- Leaf 0x80000002 - 0x80000004 ------------------------------------------}
+    {- Leaf 0x80000002 - 0x80000004  - - - - - - - - - - - - - - - - - - - - - }
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1834,7 +1904,9 @@ type
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
     SupportedExtensions: TCPUIDInfo_SupportedExtensions;
   end;
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
+ {$IFDEF SUPPORTS_REGION}{$REGION 'TFreqInfo definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   Processor frequency information.
@@ -1846,9 +1918,13 @@ type
     InCycles: Int64;
     ExTicks: Int64;
   end;
+ {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
+{$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
-{$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIdentification'}{$ENDIF}
-type
+  {- TCPUIdentification - class definition - - - - - - - - - - - - - - - - - - }
+  {- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+{$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIdentification - class definition'}{$ENDIF}
   {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
   /// <summary>
   ///   Basic class holding logic of the processor discovering. It allows to
@@ -1857,7 +1933,7 @@ type
   ///   architectures.
   /// </summary>
   {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
-  TCPUIdentification = class
+  TCPUIdentification = class(TCustomObject)
   private
     FIncUnsuppLeafs: Boolean;
     FSupported: Boolean;
@@ -1865,81 +1941,80 @@ type
     FInfo: TCPUIDInfo;
     FHighestStdLeaf: TCPUIDResult;
 
-    function GetLeafCount: Integer;
-    function GetLeaf(Index: Integer): TCPUIDLeaf;
+    function GetLeafCount: SizeUInt;
+    function GetLeaf(Index: SizeUInt): TCPUIDLeaf;
   protected
     { Only for internal use. }
-    procedure DeleteLeaf(Index: Integer);
-    procedure InitLeafs(Mask: UInt32);
+    procedure DeleteLeaf(Index: SizeUInt); virtual;
+    procedure InitLeafs(Mask: UInt32); virtual;
 
     { Standard leafs. }
-    procedure InitStandardLeafs;
+    procedure InitStdLeafs; virtual;
+
+    procedure ProcessLeaf_0000_0000; virtual;
+    procedure ProcessLeaf_0000_0001; virtual;
+    procedure ProcessLeaf_0000_0002; virtual;
+    procedure ProcessLeaf_0000_0004; virtual;
+    procedure ProcessLeaf_0000_0007; virtual;
+    procedure ProcessLeaf_0000_000B; virtual;
+    procedure ProcessLeaf_0000_000D; virtual;
+    procedure ProcessLeaf_0000_000F; virtual;
+    procedure ProcessLeaf_0000_0010; virtual;
+    procedure ProcessLeaf_0000_0012; virtual;
+    procedure ProcessLeaf_0000_0014; virtual;
+    procedure ProcessLeaf_0000_0017; virtual;
 
     { Intel Xeon Phi leafs. }
-    procedure InitXeonPhiLeafs;
+    procedure InitPhiLeafs; virtual;
 
     { Hypervisor leafs. }
-    procedure InitHypervisorLeafs;
+    procedure InitHypLeafs; virtual;
 
     { Extended leafs. }
-    procedure InitExtendedLeafs;
+    procedure InitExtLeafs; virtual;
+
+    procedure ProcessLeaf_8000_0001; virtual;
+    procedure ProcessLeaf_8000_0002_to_8000_0004; virtual;
+    procedure ProcessLeaf_8000_001D; virtual;
 
     { Transmeta leafs. }
-    procedure InitTransmetaLeafs;
+    procedure InitTNMLeafs; virtual;
 
     { Centaur leafs. }
-    procedure InitCentaurLeafs;
+    procedure InitCNTLeafs; virtual;
 
-    procedure InitSupportedExtensions;
+    procedure InitSupportedExtensions; virtual;
+    function EqualsToHighestStdLeaf(Leaf: TCPUIDResult): Boolean; virtual;
 
-    procedure ProcessLeaf_0000_0000;
-    procedure ProcessLeaf_0000_0001;
-    procedure ProcessLeaf_0000_0002;
-    procedure ProcessLeaf_0000_0004;
-    procedure ProcessLeaf_0000_0007;
-    procedure ProcessLeaf_0000_000B;
-    procedure ProcessLeaf_0000_000D;
-    procedure ProcessLeaf_0000_000F;
-    procedure ProcessLeaf_0000_0010;
-    procedure ProcessLeaf_0000_0012;
-    procedure ProcessLeaf_0000_0014;
-    procedure ProcessLeaf_0000_0017;
-    procedure ProcessLeaf_8000_0001;
-    procedure ProcessLeaf_8000_0002_to_8000_0004;
-    procedure ProcessLeaf_8000_001D;
-
-    function EqualsToHighestStdLeaf(Leaf: TCPUIDResult): Boolean;
-    class function SameLeafs(A, B: TCPUIDResult): Boolean;
+    class function SameLeafs(A, B: TCPUIDResult): Boolean; virtual;
   public
-    constructor Create(
-      DoInitialize: Boolean = True; IncUnsupportedLeafs: Boolean = True);
+    constructor Create(DoInitialize: Boolean = True; IncUnsupportedLeafs: Boolean = True);
     destructor Destroy; override;
 
     procedure Initialize; virtual;
     procedure Finalize; virtual;
-
-    function IndexOf(LeafID: UInt32): Integer;
+    function IndexOf(LeafID: UInt32): SizeInt; virtual;
 
     property Info: TCPUIDInfo read FInfo;
-    property Leafs[Index: Integer]: TCPUIDLeaf read GetLeaf; default;
-  published
-    property IncludeUnsupportedLeafs: Boolean read FIncUnsuppLeafs
-      write FIncUnsuppLeafs;
+    property Leafs[Index: SizeUInt]: TCPUIDLeaf read GetLeaf; default;
+    property IncludeUnsupportedLeafs: Boolean read FIncUnsuppLeafs write FIncUnsuppLeafs;
     property Supported: Boolean read FSupported;
-    property Count: Integer read GetLeafCount;
+    property Count: SizeUInt read GetLeafCount;
   end;
 {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
-{$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIdentificationEx'}{$ENDIF}
-type
+  {- TCPUIdentificationEx - class definition - - - - - - - - - - - - - - - - - }
+  {- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+{$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIdentificationEx - class definition'}{$ENDIF}
   TCPUIdentificationEx = class(TCPUIdentification)
   private
-    FProcessorID: Integer;
-    FPhysicalCoreCount: Integer;
-    FLogicalCoreCount: Integer;
+    FProcessorID: SizeUInt;
+    FPhysicalCoreCount: SizeUInt;
+    FLogicalCoreCount: SizeUInt;
     FFrequencyInfo: TFreqInfo;
   protected
-    class function SetThreadAffinity(ProcessorMask: NativeUInt): NativeUInt; virtual;
+    class function SetThreadAffinity(ProcessorMask: PtrUInt): PtrUInt; virtual;
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1947,7 +2022,7 @@ type
     ///   logical hyperthreaded processors.
     /// </summary>
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
-    function AvailableProcessorCount: Integer;
+    function AvailableProcessorCount: SizeUInt;
 
     {$IFDEF SUPPORTS_REGION}{$REGION 'Documentation'}{$ENDIF}
     /// <summary>
@@ -1982,246 +2057,152 @@ type
     ///   routine simply returns AvailableProcessorCount.
     /// </remarks>
     {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
-    function AvailableProcessorCoreCount: Integer;
+    function AvailableProcessorCoreCount: SizeUint;
   public
-    class function ProcessorAvailable(ProcessorID: Integer): Boolean; virtual;
+    class function ProcessorAvailable(ProcessorID: SizeUInt): Boolean; virtual;
 
-    constructor Create(ProcessorID: Integer = 0; DoInitialize: Boolean = True; IncUnsupportedLeafs: Boolean = True);
+    constructor Create(ProcessorID: SizeUInt = 0; DoInitialize: Boolean = True; IncUnsupportedLeafs: Boolean = True);
 
     procedure Initialize; override;
-  published
-    property ProcessorID: Integer read FProcessorID write FProcessorID;
-    property PhysicalCoreCount: Integer read FPhysicalCoreCount;
-    property LogicalCoreCount: Integer read FLogicalCoreCount;
+
+    property ProcessorID: SizeUInt read FProcessorID write FProcessorID;
+    property PhysicalCoreCount: SizeUInt read FPhysicalCoreCount;
+    property LogicalCoreCount: SizeUInt read FLogicalCoreCount;
     property FreqencyInfo: TFreqInfo read FFrequencyInfo;
   end;
 {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
+
+{- Main CPUID routines - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 {$IFDEF SUPPORTS_REGION}{$REGION 'General routines'}{$ENDIF}
 function CPUIDSupported: LongBool; register; assembler;
 
 procedure CPUID(Leaf, SubLeaf: UInt32; Result: Pointer); register; overload; assembler;
-procedure CPUID(Leaf: UInt32; Result: Pointer); overload;
+procedure CPUID(Leaf: UInt32; Result: Pointer); overload; {$IFDEF CanInline}inline;{$ENDIF}
 {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
 implementation
 
 uses
 {$IFDEF Windows}
-  {$IFDEF HAS_UNITSCOPE}Winapi.Windows{$ELSE}Windows{$ENDIF}
-{$ELSE}
-  unixtype,
-  pthreads
-{$ENDIF ~Windows},
-{$IF (CompilerVersion >= 20)}  { Delphi 2009+ }
+  {$IFDEF HAS_UNITSCOPE}Winapi.Windows{$ELSE}Windows{$ENDIF},
+{$ELSE !Windows}
+  baseunix,
+  pthreads,
+{$ENDIF !Windows}
+{$IF NOT DEFINED(FPC) AND (CompilerVersion >= 20)}  { Delphi 2009+ }
   {$IFDEF HAS_UNITSCOPE}System.AnsiStrings{$ELSE}AnsiStrings{$ENDIF},
 {$IFEND}
   {$IFDEF HAS_UNITSCOPE}System.Math{$ELSE}Math{$ENDIF},
   BasicClasses.Lists,
   CPUIdentification.Consts;
 
-{$IFDEF SUPPORTS_REGION}{$REGION 'General routines'}{$ENDIF}
+{$IFDEF FPC_DisableWarns}
+ {$DEFINE FPCDWM}
+ {$DEFINE W4055:={$WARN 4055 OFF}} { Conversion between ordinals and pointers is not portable. }
+{$ENDIF}
+
+{- Internal routines implementation  - - - - - - - - - - - - - - - - - - - - - }
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+{$IFDEF SUPPORTS_REGION}{$REGION 'Internal routines implementation'}{$ENDIF}
 {$IFDEF Windows}
+function GetProcessAffinityMask(hProcess: THandle; lpProcessAffinityMask, lpSystemAffinityMask: PPtrUInt): BOOL; stdcall; external kernel32;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 function IsProcessorFeaturePresent(ProcessorFeature: DWORD): BOOL; stdcall; external kernel32;
+
  {$IF NOT DECLARED(PF_FLOATING_POINT_EMULATED)}
 const
   PF_FLOATING_POINT_EMULATED = 1;
  {$IFEND}
-{$ELSE}
+{$ELSE !Windows}
+function errno_ptr: pcInt; cdecl; external name '__errno_location';
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 function pthread_getaffinity_np(thread: pthread_t; cpusetsize: size_t; cpuset: Pointer): cint; cdecl; external;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 function pthread_setaffinity_np(thread: pthread_t; cpusetsize: size_t; cpuset: Pointer): cint; cdecl; external;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 function sched_getaffinity(pid: pid_t; cpusetsize: size_t; mask: Pointer): cint; cdecl; external;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 function getpid: pid_t; cdecl; external;
 
-procedure RaiseError(ResultValue: cint; FuncName: String);
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure RaiseError(ResultValue: cint; FuncName: String); {$IFDEF CanInline}inline;{$ENDIF}
 begin
   if (ResultValue <> 0) then
-    raise ECPUIdentification.CreateFmt('%s failed with error %d.', [FuncName, ResultValue]);
+    raise ECIDSystemError.CreateFmt(SSystemError, [FuncName, ResultValue]);
 end;
-{$ENDIF ~Windows}
 
-function GetBit(Value: UInt32; Bit: Integer): Boolean; overload;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure RaiseErrorErrNo(ResultValue: cint; FuncName: String); {$IFDEF CanInline}inline;{$ENDIF}
+begin
+  if (ResultValue <> 0) then
+    raise ECIDSystemError.CreateFmt(SSystemError, [FuncName, errno_ptr^]);
+end;
+{$ENDIF !Windows}
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+function GetBit(Value: UInt32; Bit: Int32): Boolean; overload; {$IFDEF CanInline}inline;{$ENDIF}
 begin
   Result := ((Value shr Bit) and 1) <> 0;
 end;
 
-function GetBit(Value: UInt64; Bit: Integer): Boolean; overload;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+function GetBit(Value: UInt64; Bit: Int32): Boolean; overload; {$IFDEF CanInline}inline;{$ENDIF}
 begin
   Result := ((Value shr Bit) and 1) <> 0;
 end;
 
-function SetBit(Value: UInt32; Bit: Integer): UInt32;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+function SetBit(Value: UInt32; Bit: Int32): UInt32; {$IFDEF CanInline}inline;{$ENDIF}
 begin
   Result := Value or (UInt32(1) shl Bit);
 end;
 
-function GetBits(Value: UInt32; FromBit, ToBit: Integer): UInt32;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+function GetBits(Value: UInt32; FromBit, ToBit: Int32): UInt32; {$IFDEF CanInline}inline;{$ENDIF}
 begin
   Result := (Value and ($FFFFFFFF shr (31 - ToBit))) shr FromBit;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 function GetCR0: NativeUInt; assembler; register;
 asm
   { CR0 is not accessible in user mode (this function will cause exception).
-    If anyone have any idea on how to read CR0 from normal program, let me know. }
+    If anyone have any idea on how to read CR0 from normal program, let me
+    know. }
 {$IFDEF x64}
-  DB        $0F, $20, $C0
-{$ELSE}
+  DB        $0F, $20, $C0   { MOV       RAX, CR0 (problems in FPC before 3.0) }
+{$ELSE !x64}
   MOV       EAX, CR0
-{$ENDIF ~x64}
+{$ENDIF !x64}
 end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 function GetXCR0L: UInt32; assembler; register;
 asm
-  XOR       ECX, ECX
+  XOR       ECX,  ECX
 
-  { XGETBV (XCR0.Low -> EAX (result), XCR0.Hi -> EDX) }
-  DB        $0F, $01, $D0
+  DB        $0F, $01, $D0 { XGETBV (XCR0.Low -> EAX (result), XCR0.Hi -> EDX) }
 end;
 
-function CPUIDSupported: LongBool;
-const
-  EFLAGS_BitMask_ID = UInt32($00200000);
-asm
-  {-----------------------------------------------------------------------------
-   Result is returned in EAX register (all modes).
-  -----------------------------------------------------------------------------}
-{$IFDEF x64}
-  { Save initial RFLAGS register value. }
-  PUSHFQ
-
-  { Save RFLAGS register value again for further use. }
-  PUSHFQ
-  { Invert ID bit in RFLAGS value stored on stack (bit #21). }
-  XOR       QWORD PTR [RSP], EFLAGS_BitMask_ID
-  { Load RFLAGS register from stack (with inverted ID bit). }
-  POPFQ
-
-  { Save RFLAGS register to stack (if ID bit can be changed, it is saved as
-    inverted, otherwise it has its initial value). }
-  PUSHFQ
-  { Load saved RFLAGS value to EAX. }
-  POP       RAX
-  { Get whichever bit has changed in comparison with initial RFLAGS value. }
-  XOR       RAX, QWORD PTR [RSP]
-  { Check if ID bit has changed (if not => CPUID instruction not supported). }
-  AND       RAX, EFLAGS_BitMask_ID
-
-  { Restore initial RFLAGS value. }
-  POPFQ
-{$ELSE}
-  { Save initial EFLAGS register value. }
-  PUSHFD
-
-  { Save EFLAGS register value again for further use. }
-  PUSHFD
-  { Invert ID bit in EFLAGS value stored on stack (bit #21). }
-  XOR       DWORD PTR [ESP], EFLAGS_BitMask_ID
-  { Load EFLAGS register from stack (with inverted ID bit). }
-  POPFD
-
-  { Save EFLAGS register to stack (if ID bit can be changed, it is saved as
-    inverted, otherwise it has its initial value). }
-  PUSHFD
-  { Load saved EFLAGS value to EAX. }
-  POP       EAX
-  { Get whichever bit has changed in comparison with initial EFLAGS value. }
-  XOR       EAX, DWORD PTR [ESP]
-  { Check if ID bit has changed (if not => CPUID instruction not supported). }
-  AND       EAX, EFLAGS_BitMask_ID
-
-  { Restore initial EFLAGS value. }
-  POPFD
-{$ENDIF ~x64}
-end;
-
-procedure CPUID(Leaf, SubLeaf: UInt32; Result: Pointer);
-asm
-{$IFDEF x64}
-  {-----------------------------------------------------------------------------
-   Register content on enter:
-
-   Win64  Lin64
-
-    ECX    EDI   Leaf of the CPUID info (parameter for CPUID instruction)
-    EDX    ESI   SubLeaf of the CPUID info (valid only for some leafs)
-     R8    RDX   Address of memory space (at least 16 bytes long) to which
-                 resulting data (registers EAX, EBX, ECX and EDX, in that order)
-                 will be copied
-  -----------------------------------------------------------------------------}
-
-  { Save non-volatile registers. }
-  PUSH      RBX
-
- {$IFDEF Windows}
-  { Code for Windows 64-bit. }
-
-  { Move leaf and subleaf id to a proper register. }
-  MOV       EAX, ECX
-  MOV       ECX, EDX
- {$ELSE}
-  { Code for Linux 64-bit. }
-
-  { Copy address of memory storage, so it is available for further use. }
-  MOV       R8, RDX
-
-  { Move leaf and subleaf id to a proper register. }
-  MOV       EAX,  EDI
-  MOV       ECX,  ESI
- {$ENDIF ~Windows}
-
-  { Get the info. }
-  CPUID
-
-  { Copy resulting registers to a provided memory. }
-  MOV       [R8], EAX
-  MOV       [R8 + 4], EBX
-  MOV       [R8 + 8], ECX
-  MOV       [R8 + 12], EDX
-
-  { Restore non-volatile registers. }
-  POP       RBX
-{$ELSE}
-  {-----------------------------------------------------------------------------
-   Win32, Lin32
-
-   Register content on enter:
-
-     EAX - Leaf of the CPUID info (parameter for CPUID instruction)
-     EDX - SubLeaf of the CPUID info (valid only for some leafs)
-     ECX - Address of memory space (at least 16 bytes long) to which resulting
-           data (registers EAX, EBX, ECX and EDX, in that order) will be copied
-  -----------------------------------------------------------------------------}
-
-  { Save non-volatile registers. }
-  PUSH      EDI
-  PUSH      EBX
-
-  { Copy address of memory storage, so it is available for further use. }
-  MOV       EDI, ECX
-
-  { Move subleaf number to ECX register where it is expected. }
-  MOV       ECX,  EDX
-
-  { Get the info (EAX register already contains the leaf number). }
-  CPUID
-
-  { Copy resulting registers to a provided memory. }
-  MOV       [EDI], EAX
-  MOV       [EDI + 4], EBX
-  MOV       [EDI + 8], ECX
-  MOV       [EDI + 12], EDX
-
-  { Restore non-volatile registers. }
-  POP       EBX
-  POP       EDI
-{$ENDIF ~x64}
-end;
-
-procedure CPUID(Leaf: UInt32; Result: Pointer);
-begin
-  CPUID(Leaf, 0, Result);
-end;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 function ReadTimeStampCounter: Int64; assembler;
 asm
@@ -2231,16 +2212,18 @@ asm
   SHL       RDX, 32
   OR        RAX, RDX
   { Result in RAX }
-{$ENDIF ~x64}
+{$ENDIF !x64}
 end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 function RoundFrequency(const Frequency: Integer): Integer;
 const
-  NF: array[0..8] of Integer = (0, 20, 33, 50, 60, 66, 80, 90, 100);
+  NF: array[0..8] of Int32 = (0, 20, 33, 50, 60, 66, 80, 90, 100);
 var
-  Freq, RF: Integer;
-  I: Byte;
-  Hi, Lo: Byte;
+  Freq, RF: Int32;
+  I: UInt8;
+  Hi, Lo: UInt8;
 begin
   RF := 0;
   Freq := Frequency mod 100;
@@ -2251,6 +2234,7 @@ begin
     begin
       Hi := I;
       Lo := I - 1;
+
       if ((NF[Hi] - Freq) > (Freq - NF[Lo])) then
         RF := NF[Lo] - Freq
       else
@@ -2263,13 +2247,15 @@ begin
   Result := Frequency + RF;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 function GetCPUSpeed(var CpuSpeed: TFreqInfo): Boolean;
 {$IFDEF UNIX}
 begin
   { TODO: GetCPUSpeed: Solution for Linux. }
   Result := False;
 end;
-{$ENDIF ~UNIX}
+{$ENDIF !UNIX}
 
 {$IFDEF MSWINDOWS}
 var
@@ -2278,8 +2264,8 @@ var
   Freq, Freq2, Freq3, Total: Int64;
   TotalCycles, Cycles: Int64;
   Stamp0, Stamp1: Int64;
-  TotalTicks, Ticks: Double;
-  Tries, Priority: Integer;
+  TotalTicks, Ticks: Float64;
+  Tries, Priority: Int32;
   Thread: THandle;
 begin
   Stamp0 := 0;
@@ -2295,6 +2281,7 @@ begin
   Thread := GetCurrentThread;
   CountFreq := 0;
   Result := QueryPerformanceFrequency(CountFreq);
+
   if (Result) then
   begin
     while ((Tries < 3) or ((Tries < 20) and ((Abs(3 * Freq - Total) > 3) or (Abs(3 * Freq2 - Total) > 3) or (Abs(3 * Freq3 - Total) > 3)))) do
@@ -2307,6 +2294,7 @@ begin
       T1 := T0;
 
       Priority := GetThreadPriority(Thread);
+
       if (Priority <> THREAD_PRIORITY_ERROR_RETURN) then
         SetThreadPriority(Thread, THREAD_PRIORITY_TIME_CRITICAL);
 
@@ -2383,15 +2371,173 @@ begin
     Result := True;
   end;
 end;
-{$ENDIF ~MSWINDOWS}
+{$ENDIF !MSWINDOWS}
 {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
-{$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIdentification'}{$ENDIF}
+{- Main CPUID routines (ASM) implementation  - - - - - - - - - - - - - - - - - }
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+{$IFDEF SUPPORTS_REGION}{$REGION 'Main CPUID routines (ASM) implementation'}{$ENDIF}
+function CPUIDSupported: LongBool;
+const
+  EFLAGS_BitMask_ID = UInt32($00200000);
+asm
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ Result is returned in EAX register (all modes)
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+{$IFDEF x64}
+  { Save initial RFLAGS register value. }
+  PUSHFQ
+
+  { Save RFLAGS register value again for further use. }
+  PUSHFQ
+  { Invert ID bit in RFLAGS value stored on stack (bit #21) }
+  XOR       qword ptr [RSP], EFLAGS_BitMask_ID
+  { Load RFLAGS register from stack (with inverted ID bit). }
+  POPFQ
+
+  { Save RFLAGS register to stack (if ID bit can be changed, it is saved as
+    inverted, otherwise it has its initial value). }
+  PUSHFQ
+  { Load saved RFLAGS value to EAX. }
+  POP       RAX
+  { Get whichever bit has changed in comparison with initial RFLAGS value. }
+  XOR       RAX, qword ptr [RSP]
+  { Check if ID bit has changed (if not => CPUID instruction not supported). }
+  AND       RAX, EFLAGS_BitMask_ID
+
+  { Restore initial RFLAGS value. }
+  POPFQ
+{$ELSE !x64}
+  { Save initial EFLAGS register value. }
+  PUSHFD
+
+  { Save EFLAGS register value again for further use. }
+  PUSHFD
+  { Invert ID bit in EFLAGS value stored on stack (bit #21). }
+  XOR       dword ptr [ESP], EFLAGS_BitMask_ID
+  { Load EFLAGS register from stack (with inverted ID bit). }
+  POPFD
+
+  { Save EFLAGS register to stack (if ID bit can be changed, it is saved as
+    inverted, otherwise it has its initial value). }
+  PUSHFD
+  { Load saved EFLAGS value to EAX. }
+  POP       EAX
+  { Get whichever bit has changed in comparison with initial EFLAGS value. }
+  XOR       EAX, dword ptr [ESP]
+  { Check if ID bit has changed (if not => CPUID instruction not supported). }
+  AND       EAX, EFLAGS_BitMask_ID
+
+  { Restore initial EFLAGS value. }
+  POPFD
+{$ENDIF !x64}
+end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure CPUID(Leaf, SubLeaf: UInt32; Result: Pointer);
+asm
+{$IFDEF x64}
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  Register content on enter:
+
+  Win64  Lin64
+
+   ECX    EDI   Leaf of the CPUID info (parameter for CPUID instruction)
+   EDX    ESI   SubLeaf of the CPUID info (valid only for some leafs)
+    R8    RDX   Address of memory space (at least 16 bytes long) to which
+                resulting data (registers EAX, EBX, ECX and EDX, in that order)
+                will be copied
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+  { Save non-volatile registers. }
+  PUSH      RBX
+
+{$IFDEF Windows}
+  { Code for Windows 64-bit. }
+
+  { Move leaf and subleaf id to a proper register. }
+  MOV       EAX, ECX
+  MOV       ECX, EDX
+{$ELSE !Windows}
+  { Code for Linux 64-bit. }
+
+  { Copy address of memory storage, so it is available for further use. }
+  MOV       R8, RDX
+
+  { Move leaf and subleaf id to a proper register. }
+  MOV       EAX, EDI
+  MOV       ECX, ESI
+{$ENDIF !Windows}
+
+  { Get the info. }
+  CPUID
+
+  { Copy resulting registers to a provided memory. }
+  MOV       [R8], EAX
+  MOV       [R8 + 4], EBX
+  MOV       [R8 + 8], ECX
+  MOV       [R8 + 12], EDX
+
+  { Restore non-volatile registers. }
+  POP       RBX
+{$ELSE !x64}
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  Win32, Lin32
+
+  Register content on enter:
+
+    EAX - Leaf of the CPUID info (parameter for CPUID instruction)
+    EDX - SubLeaf of the CPUID info (valid only for some leafs)
+    ECX - Address of memory space (at least 16 bytes long) to which resulting
+          data (registers EAX, EBX, ECX and EDX, in that order) will be copied
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+  { Save non-volatile registers. }
+  PUSH      EDI
+  PUSH      EBX
+
+  { Copy address of memory storage, so it is available for further use. }
+  MOV       EDI, ECX
+
+  { Move subleaf number to ECX register where it is expected. }
+  MOV       ECX, EDX
+
+  { Get the info (EAX register already contains the leaf number). }
+  CPUID
+
+  { Copy resulting registers to a provided memory. }
+  MOV       [EDI], EAX
+  MOV       [EDI + 4], EBX
+  MOV       [EDI + 8], ECX
+  MOV       [EDI + 12], EDX
+
+  { Restore non-volatile registers. }
+  POP       EBX
+  POP       EDI
+{$ENDIF !x64}
+end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure CPUID(Leaf: UInt32; Result: Pointer);
+begin
+  CPUID(Leaf, 0, Result);
+end;
+{$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
+
+{- TCPUIdentification - class implementation - - - - - - - - - - - - - - - - - }
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+{$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIdentification - class implementation'}{$ENDIF}
 type
   TManufacturersItem = record
     IDStr: String;
     ID: TCPUIDManufacturerID;
   end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 const
   Manufacturers: array[0..13] of TManufacturersItem = (
@@ -2410,63 +2556,84 @@ const
     (IDStr: 'VIA VIA VIA '; ID: mnVIA),
     (IDStr: 'Vortex86 SoC'; ID: mnVortex));
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 constructor TCPUIdentification.Create(DoInitialize, IncUnsupportedLeafs: Boolean);
 begin
+  { (1) Call inherited code. }
   inherited Create;
 
+  { (2) Set FIncUnsuppLeafs. }
   FIncUnsuppLeafs := IncUnsupportedLeafs;
 
+  { (3) If initialization needed, call Initialize. }
   if (DoInitialize) then
     Initialize;
 end;
 
-procedure TCPUIdentification.DeleteLeaf(Index: Integer);
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure TCPUIdentification.DeleteLeaf(Index: SizeUInt);
 var
-  I: Integer;
+  I: SizeUInt;
 begin
-  if ((Index >= Low(FLeafs)) and (Index <= High(FLeafs))) then
+  if (Index <= SizeUInt(High(FLeafs))) then
   begin
     for I := Index to Pred(High(FLeafs)) do
       FLeafs[I] := FLeafs[I + 1];
 
     SetLength(FLeafs, Length(FLeafs) - 1);
   end else
-    raise ECPUIdentification.CreateFmt(SDeleteLeaf_IndexOutOfBounds, [Index]);
+    raise ECIDIndexOutOfBounds.CreateFmt(SDeleteLeaf_IndexOutOfBounds, [Index]);
 end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 destructor TCPUIdentification.Destroy;
 begin
+  { (1) Finalize. }
   Finalize;
 
+  { (2) Call ingerited code. }
   inherited;
 end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 function TCPUIdentification.EqualsToHighestStdLeaf(Leaf: TCPUIDResult): Boolean;
 begin
   Result := SameLeafs(Leaf, FHighestStdLeaf);
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.Finalize;
 begin
   SetLength(FLeafs, 0);
 end;
 
-function TCPUIdentification.GetLeaf(Index: Integer): TCPUIDLeaf;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+function TCPUIdentification.GetLeaf(Index: SizeUInt): TCPUIDLeaf;
 begin
-  if ((Index >= Low(FLeafs)) and (Index <= High(FLeafs))) then
+  if (Index <= SizeUInt(High(FLeafs))) then
     Result := FLeafs[Index]
   else
-    raise ECPUIdentification.CreateFmt(SGetLeaf_IndexOutOfBounds, [Index]);
+    raise ECIDIndexOutOfBounds.CreateFmt(SGetLeaf_IndexOutOfBounds, [Index]);
 end;
 
-function TCPUIdentification.GetLeafCount: Integer;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+function TCPUIdentification.GetLeafCount: SizeUInt;
 begin
   Result := Length(FLeafs);
 end;
 
-function TCPUIdentification.IndexOf(LeafID: UInt32): Integer;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+function TCPUIdentification.IndexOf(LeafID: UInt32): SizeInt;
 var
-  I: Integer;
+  I: SizeUInt;
 begin
   Result := -1;
 
@@ -2478,12 +2645,16 @@ begin
     end;
 end;
 
-procedure TCPUIdentification.InitCentaurLeafs;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure TCPUIdentification.InitCNTLeafs;
 begin
   InitLeafs($C0000000);
 end;
 
-procedure TCPUIdentification.InitExtendedLeafs;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure TCPUIdentification.InitExtLeafs;
 begin
   InitLeafs($80000000);
 
@@ -2493,16 +2664,20 @@ begin
   ProcessLeaf_8000_001D;
 end;
 
-procedure TCPUIdentification.InitHypervisorLeafs;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure TCPUIdentification.InitHypLeafs;
 
   procedure AddHypLeaf(ID: UInt32);
   var
     Temp: TCPUIDResult;
   begin
     CPUID(ID, Addr(Temp));
+
     if (not EqualsToHighestStdLeaf(Temp)) then
     begin
       SetLength(FLeafs, Length(FLeafs) + 1);
+
       FLeafs[High(FLeafs)].ID := ID;
       FLeafs[High(FLeafs)].Data := Temp;
     end;
@@ -2521,39 +2696,52 @@ begin
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.Initialize;
 var
-  I: Integer;
+  I: SizeUInt;
 begin
+  { (1) Set length of FLeafs to 0. }
   SetLength(FLeafs, 0);
+
+  { (2) Store CPUID support flag in FSupported. }
   FSupported := CPUIdentification.CPUIDSupported;
+
+  { (3) If FSupported is True, initialize all leafs. }
   if (FSupported) then
   begin
-    InitStandardLeafs;
-    InitXeonPhiLeafs;
-    InitHypervisorLeafs;
-    InitExtendedLeafs;
-    InitTransmetaLeafs;
-    InitCentaurLeafs;
+    InitStdLeafs;
+    InitPhiLeafs;
+    InitHypLeafs;
+    InitExtLeafs;
+    InitTNMLeafs;
+    InitCNTLeafs;
   end;
 
+  { (4.1) If unsupported leafs should be included, then: }
   if (not FIncUnsuppLeafs) then
+    { (4.2) Itterate throu all leafs (downward) and ... }
     for I := High(FLeafs) downto Low(FLeafs) do
-      if (SameLeafs(FLeafs[i].Data, NullLeaf)) then
-        DeleteLeaf(i);
+      { (4.3) ... if current leaf data is equal to NullLeaf, then delete that
+              leaf. }
+      if (SameLeafs(FLeafs[I].Data, NullLeaf)) then
+        DeleteLeaf(I);
 
+  { (5) Initialize supported extensions. }
   InitSupportedExtensions;
 end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 procedure TCPUIdentification.InitLeafs(Mask: UInt32);
 var
   Temp: TCPUIDResult;
-  Cnt, I: Integer;
+  Cnt, I: SizeUInt;
 begin
   { Get leaf count. }
   CPUID(Mask, Addr(Temp));
-  if (((Temp.EAX and $FFFF0000) = Mask) and
-      (not EqualsToHighestStdLeaf(Temp))) then
+  if (((Temp.EAX and $FFFF0000) = Mask) and (not EqualsToHighestStdLeaf(Temp))) then
   begin
     Cnt := Length(FLeafs);
     SetLength(FLeafs, Length(FLeafs) + Integer(Temp.EAX and not Mask) + 1);
@@ -2561,13 +2749,22 @@ begin
     { Load all leafs. }
     for I := Cnt to High(FLeafs) do
     begin
-      FLeafs[i].ID := UInt32(I - Cnt) or Mask;
-      CPUID(FLeafs[i].ID, Addr(FLeafs[i].Data));
+      FLeafs[I].ID := UInt32(I - Cnt) or Mask;
+      CPUID(FLeafs[I].ID, Addr(FLeafs[I].Data));
     end;
   end;
 end;
 
-procedure TCPUIdentification.InitStandardLeafs;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure TCPUIdentification.InitPhiLeafs;
+begin
+  InitLeafs($20000000);
+end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure TCPUIdentification.InitStdLeafs;
 begin
   InitLeafs($00000000);
   if (Length(FLeafs) > 0) then
@@ -2590,25 +2787,25 @@ begin
   ProcessLeaf_0000_0017;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.InitSupportedExtensions;
 begin
   with FInfo.SupportedExtensions do
   begin
     X87 := FInfo.ProcessorFeatures.FPU;
+
     {
     EmulatedX87 := GetBit(GetCR0, 2);
 
-    !! Control registers CR0 is not accesible in user mode, let's use the OS.
+    Control registers CR0 is not accesible in user mode, let's use the OS.
     }
 {$IFDEF Windows}
     EmulatedX87 := IsProcessorFeaturePresent(PF_FLOATING_POINT_EMULATED);
-{$ELSE}
- {$IFDEF DebugMsgs}
-  {$MESSAGE 'How to get whether FPU is emulated in linux?'}
- {$ENDIF ~DebugMsgs}
+{$ELSE !Windows}
+ {$IFDEF DebugMsgs}{$MESSAGE 'How to get whether FPU is emulated in linux?'}{$ENDIF}
     EmulatedX87 := False;
 {$ENDIF !Windows}
-
     MMX := FInfo.ProcessorFeatures.MMX and not EmulatedX87;
     SSE := FInfo.ProcessorFeatures.SSE;
     SSE2 := FInfo.ProcessorFeatures.SSE2 and SSE;
@@ -2643,31 +2840,34 @@ begin
   end;
 end;
 
-procedure TCPUIdentification.InitTransmetaLeafs;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+procedure TCPUIdentification.InitTNMLeafs;
 begin
   InitLeafs($80860000);
 end;
 
-procedure TCPUIdentification.InitXeonPhiLeafs;
-begin
-  InitLeafs($20000000);
-end;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 procedure TCPUIdentification.ProcessLeaf_0000_0000;
 var
-  Index, I: Integer;
+  Index: SizeInt;
   Str: AnsiString;
+  I: SizeUInt;
 begin
   Index := IndexOf($00000000);
   if (Index >= 0) then
   begin
     SetLength(Str, 12);
     Move(FLeafs[Index].Data.EBX, Pointer(PAnsiChar(Str))^, 4);
+
+{$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
     Move(FLeafs[Index].Data.EDX, Pointer(PtrUInt(PAnsiChar(Str)) + 4)^, 4);
     Move(FLeafs[Index].Data.ECX, Pointer(PtrUInt(PAnsiChar(Str)) + 8)^, 4);
+{$IFDEF FPCDWM}{$POP}{$ENDIF}
 
     FInfo.ManufacturerIDString := String(Str);
-    FInfo.ManufacturerID := TCPUIDManufacturerID.mnOthers;
+    FInfo.ManufacturerID := mnOthers;
 
     for I := Low(Manufacturers) to High(Manufacturers) do
       if (AnsiSameStr(Manufacturers[I].IDStr, FInfo.ManufacturerIDString)) then
@@ -2675,9 +2875,11 @@ begin
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_0001;
 var
-  Index: Integer;
+  Index: SizeInt;
 begin
   Index := IndexOf($00000001);
   if (Index >= 0) then
@@ -2686,30 +2888,24 @@ begin
     FInfo.ProcessorType := GetBits(FLeafs[Index].Data.EAX, 12, 13);
 
     { Processor family. }
-    if (GetBits(FLeafs[Index].Data.EAX, 8, 11) <> $0F) then
+    if (GetBits(FLeafs[Index].Data.EAX, 8, 11) <> $F) then
       FInfo.ProcessorFamily := GetBits(FLeafs[Index].Data.EAX, 8, 11)
     else
-      FInfo.ProcessorFamily :=
-        GetBits(FLeafs[Index].Data.EAX, 8, 11) +
-        GetBits(FLeafs[Index].Data.EAX, 20, 27);
+      FInfo.ProcessorFamily := GetBits(FLeafs[Index].Data.EAX, 8, 11) + GetBits(FLeafs[Index].Data.EAX, 20, 27);
 
     { Processor model. }
-    if (GetBits(FLeafs[Index].Data.EAX, 8, 11) in [$06, $0F]) then
-      FInfo.ProcessorModel :=
-        (GetBits(FLeafs[Index].Data.EAX, 16, 19) shl 4) +
-        GetBits(FLeafs[Index].Data.EAX, 4, 7)
+    if (GetBits(FLeafs[Index].Data.EAX, 8, 11) in [$6, $F]) then
+      FInfo.ProcessorModel := (GetBits(FLeafs[Index].Data.EAX, 16, 19) shl 4) + GetBits(FLeafs[Index].Data.EAX, 4, 7)
     else
       FInfo.ProcessorModel := GetBits(FLeafs[Index].Data.EAX, 4, 7);
 
-    { Processor stepping. }
+    { Pocessor stepping. }
     FInfo.ProcessorStepping := GetBits(FLeafs[Index].Data.EAX, 0, 3);
 
     { Additional info. }
     FInfo.AdditionalInfo.BrandID := GetBits(FLeafs[Index].Data.EBX, 0, 7);
-    FInfo.AdditionalInfo.CacheLineFlushSize :=
-      GetBits(FLeafs[Index].Data.EBX, 8, 15) * 8;
-    FInfo.AdditionalInfo.LogicalProcessorCount :=
-      GetBits(FLeafs[Index].Data.EBX, 16, 23);
+    FInfo.AdditionalInfo.CacheLineFlushSize := GetBits(FLeafs[Index].Data.EBX, 8, 15) * 8;
+    FInfo.AdditionalInfo.LogicalProcessorCount := GetBits(FLeafs[Index].Data.EBX, 16, 23);
     FInfo.AdditionalInfo.LocalAPICID := GetBits(FLeafs[Index].Data.EBX, 24, 31);
 
     { Processor features. }
@@ -2783,34 +2979,38 @@ begin
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_0002;
 var
-  Index, I: Integer;
+  Index: SizeInt;
+  I: SizeUInt;
 begin
-  { This whole function must be run on the same processor (core), otherwise results will be wrong. }
+  { This whole function must be run on the same processor (core), otherwise
+    results will be wrong. }
   Index := IndexOf($00000002);
   if (Index >= 0) then
     if (Byte(FLeafs[Index].Data.EAX) > 0) then
     begin
       SetLength(FLeafs[Index].SubLeafs, Byte(FLeafs[Index].Data.EAX));
       FLeafs[Index].SubLeafs[0] := FLeafs[Index].Data;
-
       for I := 1 to High(FLeafs[Index].SubLeafs) do
-        CPUID(2, Addr(FLeafs[Index].SubLeafs[i]));
+        CPUID(2, Addr(FLeafs[Index].SubLeafs[I]));
     end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_0004;
 var
-  Index: Integer;
+  Index: SizeInt;
   Temp: TCPUIDResult;
 begin
   Index := IndexOf($00000004);
   if (Index >= 0) then
   begin
     Temp := FLeafs[Index].Data;
-    while (((Temp.EAX and $1F) <> 0) and
-           (Length(FLeafs[Index].SubLeafs) <= 128)) do
+    while (((Temp.EAX and $1F) <> 0) and (Length(FLeafs[Index].SubLeafs) <= 128)) do
     begin
       SetLength(FLeafs[Index].SubLeafs, Length(FLeafs[Index].SubLeafs) + 1);
       FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)] := Temp;
@@ -2819,9 +3019,12 @@ begin
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_0007;
 var
-  Index, I: Integer;
+  Index: SizeInt;
+  I: SizeUInt;
 begin
   Index := IndexOf($00000007);
   if (Index >= 0) then
@@ -2830,7 +3033,7 @@ begin
     SetLength(FLeafs[Index].SubLeafs, FLeafs[Index].Data.EAX + 1);
 
     for I := Low(FLeafs[Index].SubLeafs) to High(FLeafs[Index].SubLeafs) do
-      CPUID(7, UInt32(I), Addr(FLeafs[Index].SubLeafs[I]));
+      CPUID(7, UInt32(I), Addr(FLeafs[Index].SubLeafs[i]));
 
     { Processor features. }
     with FInfo.ProcessorFeatures do
@@ -2888,9 +3091,11 @@ begin
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_000B;
 var
-  Index: Integer;
+  Index: SizeInt;
   Temp: TCPUIDResult;
 begin
   Index := IndexOf($0000000B);
@@ -2906,9 +3111,12 @@ begin
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_000D;
 var
-  Index, I: Integer;
+  Index: SizeInt;
+  I: SizeUInt;
 begin
   Index := IndexOf($0000000D);
   if (Index >= 0) then
@@ -2916,71 +3124,73 @@ begin
     SetLength(FLeafs[Index].SubLeafs, 2);
     FLeafs[Index].SubLeafs[0] := FLeafs[Index].Data;
     CPUID($D, 1, Addr(FLeafs[Index].SubLeafs[1]));
+
     for I := 2 to 31 do
-      if (GetBit(FLeafs[Index].SubLeafs[0].EAX, I) and
-          GetBit(FLeafs[Index].SubLeafs[1].ECX, I)) then
+      if (GetBit(FLeafs[Index].SubLeafs[0].EAX, I) and GetBit(FLeafs[Index].SubLeafs[1].ECX, I)) then
       begin
         SetLength(FLeafs[Index].SubLeafs, Length(FLeafs[Index].SubLeafs) + 1);
-        CPUID(
-          $D, UInt32(I),
-          Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
+        CPUID($D, UInt32(I), Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
       end;
 
     for I := 0 to 31 do
-      if (GetBit(FLeafs[Index].SubLeafs[0].EDX, I) and
-          GetBit(FLeafs[Index].SubLeafs[1].EDX, I)) then
+      if (GetBit(FLeafs[Index].SubLeafs[0].EDX, I) and GetBit(FLeafs[Index].SubLeafs[1].EDX, I)) then
       begin
         SetLength(FLeafs[Index].SubLeafs, Length(FLeafs[Index].SubLeafs) + 1);
-        CPUID(
-          $D, UInt32(32 + I),
-          Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
+        CPUID($D, UInt32(32 + I), Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
       end;
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_000F;
 var
-  Index, I: Integer;
+  Index: SizeInt;
+  I: SizeUInt;
 begin
   Index := IndexOf($0000000F);
   if (Index >= 0) then
   begin
     SetLength(FLeafs[Index].SubLeafs, 1);
     FLeafs[Index].SubLeafs[0] := FLeafs[Index].Data;
+
     for I := 1 to 31 do
       if (GetBit(FLeafs[Index].Data.EDX, I)) then
       begin
         SetLength(FLeafs[Index].SubLeafs, Length(FLeafs[Index].SubLeafs) + 1);
-        CPUID(
-          $F, UInt32(I),
-          Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
+        CPUID($F, UInt32(I), Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
       end;
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_0010;
 var
-  Index, I: Integer;
+  Index: SizeInt;
+  I: SizeUInt;
 begin
   Index := IndexOf($00000010);
   if (Index >= 0) then
   begin
     SetLength(FLeafs[Index].SubLeafs, 1);
     FLeafs[Index].SubLeafs[0] := FLeafs[Index].Data;
+
     for I := 1 to 31 do
       if (GetBit(FLeafs[Index].Data.EBX, I)) then
       begin
         SetLength(FLeafs[Index].SubLeafs, Length(FLeafs[Index].SubLeafs) + 1);
-        CPUID(
-          $10, UInt32(I),
-          Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
+        CPUID($10, UInt32(I), Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
       end;
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_0012;
 var
-  Index, I: Integer;
+  Index: SizeInt;
+  I: SizeUInt;
 begin
   Index := IndexOf($00000012);
   if (Index >= 0) then
@@ -2989,23 +3199,24 @@ begin
     begin
       SetLength(FLeafs[Index].SubLeafs, 1);
       FLeafs[Index].SubLeafs[0] := FLeafs[Index].Data;
+
       for I := 0 to 31 do
         if (GetBit(FLeafs[Index].Data.EAX, I)) then
         begin
           SetLength(FLeafs[Index].SubLeafs, Length(FLeafs[Index].SubLeafs) + 1);
-          CPUID(
-            $12, UInt32(I + 1),
-            Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
+          CPUID($12, UInt32(I + 1), Addr(FLeafs[Index].SubLeafs[High(FLeafs[Index].SubLeafs)]));
         end;
-      end
-    else
+    end else
       DeleteLeaf(Index);
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_0014;
 var
-  Index, I: Integer;
+  Index: SizeInt;
+  I: SizeUInt;
 begin
   Index := IndexOf($00000014);
   if (Index >= 0) then
@@ -3013,13 +3224,16 @@ begin
     SetLength(FLeafs[Index].SubLeafs, FLeafs[Index].Data.EAX + 1);
 
     for I := Low(FLeafs[Index].SubLeafs) to High(FLeafs[Index].SubLeafs) do
-      CPUID($14, UInt32(I), Addr(FLeafs[Index].SubLeafs[i]));
+      CPUID($14, UInt32(I), Addr(FLeafs[Index].SubLeafs[I]));
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_0000_0017;
 var
-  Index, I: Integer;
+  Index: SizeInt;
+  I: SizeUInt;
 begin
   Index := IndexOf($00000017);
   if (Index >= 0) then
@@ -3027,16 +3241,19 @@ begin
     if (FLeafs[Index].Data.EAX >= 3) then
     begin
       SetLength(FLeafs[Index].SubLeafs, FLeafs[Index].Data.EAX + 1);
+
       for I := Low(FLeafs[Index].SubLeafs) to High(FLeafs[Index].SubLeafs) do
-        CPUID($17, UInt32(I), Addr(FLeafs[Index].SubLeafs[i]));
+        CPUID($17, UInt32(I), Addr(FLeafs[Index].SubLeafs[I]));
     end else
       DeleteLeaf(Index);
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_8000_0001;
 var
-  Index: Integer;
+  Index: SizeInt;
 begin
   Index := IndexOf($80000001);
   if (Index >= 0) then
@@ -3106,30 +3323,27 @@ begin
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_8000_0002_to_8000_0004;
 var
   Str: AnsiString;
-  I, Index: Integer;
+  I: SizeUInt;
+  Index: SizeInt;
 begin
   { Get brand string. }
   SetLength(Str, 48);
   for I := 0 to 2 do
   begin
-    Index := IndexOf($80000002 + UInt32(I));
+    Index := IndexOf($80000002 + UInt32(i));
     if (Index >= 0) then
     begin
-      Move(
-        FLeafs[Index].Data.EAX,
-        Pointer(PtrUInt(PAnsiChar(Str)) + PtrUInt(I * 16))^, 4);
-      Move(
-        FLeafs[Index].Data.EBX,
-        Pointer(PtrUInt(PAnsiChar(Str)) + PtrUInt(I * 16) + 4)^, 4);
-      Move(
-        FLeafs[Index].Data.ECX,
-        Pointer(PtrUInt(PAnsiChar(Str)) + PtrUInt(I * 16) + 8)^, 4);
-      Move(
-        FLeafs[Index].Data.EDX,
-        Pointer(PtrUInt(PAnsiChar(Str)) + PtrUInt(I * 16) + 12)^, 4);
+{$IFDEF FPCDWM}{$PUSH}W4055{$ENDIF}
+      Move(FLeafs[Index].Data.EAX, Pointer(PtrUInt(PAnsiChar(Str)) + PtrUInt(I * 16))^, 4);
+      Move(FLeafs[Index].Data.EBX, Pointer(PtrUInt(PAnsiChar(Str)) + PtrUInt(I * 16) + 4)^, 4);
+      Move(FLeafs[Index].Data.ECX, Pointer(PtrUInt(PAnsiChar(Str)) + PtrUInt(I * 16) + 8)^, 4);
+      Move(FLeafs[Index].Data.EDX, Pointer(PtrUInt(PAnsiChar(Str)) + PtrUInt(I * 16) + 12)^, 4);
+{$IFDEF FPCDWM}{$POP}{$ENDIF}
     end else
       begin
         FInfo.BrandString := '';
@@ -3137,8 +3351,8 @@ begin
       end;
   end;
 
-{$IF (CompilerVersion >= 20)}
-  SetLength(Str, {$IFDEF HAS_UNITSCOPE}System.{$ENDIF}AnsiStrings.StrLen(PAnsiChar(Str)));
+{$IF NOT DEFINED(FPC) AND (CompilerVersion >= 20)}
+  SetLength(Str, {$IFDEF HAS_UNITSCOPE}System.AnsiStrings.StrLen(PAnsiChar(Str)){$ELSE}AnsiStrings.StrLen(PAnsiChar(Str)){$ENDIF});
 {$ELSE}
   SetLength(Str, StrLen(PAnsiChar(Str)));
 {$IFEND}
@@ -3146,9 +3360,11 @@ begin
   FInfo.BrandString := Trim(String(Str));
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 procedure TCPUIdentification.ProcessLeaf_8000_001D;
 var
-  Index: Integer;
+  Index: SizeInt;
   Temp: TCPUIDResult;
 begin
   Index := IndexOf($8000001D);
@@ -3164,20 +3380,24 @@ begin
   end;
 end;
 
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
 class function TCPUIdentification.SameLeafs(A, B: TCPUIDResult): Boolean;
 begin
   Result := (A.EAX = B.EAX) and (A.EBX = B.EBX) and (A.ECX = B.ECX) and (A.EDX = B.EDX);
 end;
 {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 
-{$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIdentificationEx'}{$ENDIF}
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+{$IFDEF SUPPORTS_REGION}{$REGION 'TCPUIdentificationEx - class implementation'}{$ENDIF}
 {$HINTS OFF}
 {$WARNINGS OFF}
-function TCPUIdentificationEx.AvailableProcessorCoreCount: Integer;
+function TCPUIdentificationEx.AvailableProcessorCoreCount: SizeUInt;
 
   function GetMaxBasicCPUIDLeaf: NativeUInt;
   var
-    Index: Integer;
+    Index: SizeInt;
   begin
     Index := IndexOf($00000000);
     if (Index >= 0) then
@@ -3201,7 +3421,7 @@ function TCPUIdentificationEx.AvailableProcessorCoreCount: Integer;
 
   function GetMaxCoresPerPackage: PtrUInt;
   var
-    Index: Integer;
+    Index: SizeInt;
   begin
     if (GetMaxBasicCPUIDLeaf >= 4) then
     begin
@@ -3223,14 +3443,15 @@ function TCPUIdentificationEx.AvailableProcessorCoreCount: Integer;
   var
     Tmp: TCPUIDResult;
   begin
-    { Very important! We need to read current state of local APIC_ID because in further code we are switching thread affinity
-      mask and state of APIC_ID is rescheduled by OS. }
+    { Very important! We need to read current state of local APIC_ID because in
+      further code we are switching thread affinity mask and state of APIC_ID is
+      rescheduled by OS. }
     CPUID($00000001, Addr(Tmp));
     Result := Tmp.EBX shr 24;
   end;
 
 var
-  I: Integer;
+  I: SizeUInt;
   PackCoreList: TIntegerList;
   ThreadHandle: THandle;
   LogicalProcessorCountPerPackage, MaxCoresPerPackage, LogicalPerCore,
@@ -3240,8 +3461,9 @@ var
 begin
   Result := 0;
   try
-    { See Intel documentation (Y:IntelIA32_manuals) for details on logical processor topology. }
-    if (System.SysUtils.Win32Platform = VER_PLATFORM_WIN32_NT) then
+    { See Intel documentation (Y:IntelIA32_manuals) for details on logical
+      processor topology. }
+    if ({$IFDEF HAS_UNITSCOPE}System.SysUtils.Win32Platform{$ELSE}SysUtils.Win32Platform{$ENDIF} = VER_PLATFORM_WIN32_NT) then
 	  begin
       MaxCoresPerPackage := GetMaxCoresPerPackage;
       if ((ProcessorPackageSupportsLogicalProcessors) or (MaxCoresPerPackage > 1)) then
@@ -3280,7 +3502,7 @@ begin
         LOGICAL_ID_MASK := not LOGICAL_ID_MASK;
         CORE_ID_MASK := not CORE_ID_MASK;
 
-		    if (GetProcessAffinityMask(GetCurrentProcess, ProcessAffinityMask, SystemAffinityMask)) then
+		    if (GetProcessAffinityMask(GetCurrentProcess, @ProcessAffinityMask, @SystemAffinityMask)) then
         begin
 		      { Get the current thread affinity. }
           ThreadHandle := GetCurrentThread;
@@ -3297,7 +3519,8 @@ begin
                   begin
                     if (SetThreadAffinityMask(ThreadHandle, Mask) <> 0) then
 					          begin
-					            { Allow OS to reschedule thread onto the selected processor. }
+					            { Allow OS to reschedule thread onto the selected
+                        processor. }
                       Sleep(0);
 
 					            APIC_ID := GetAPIC_ID;
@@ -3311,7 +3534,8 @@ begin
                       PACKAGE_CORE_ID :=
 					              APIC_ID and (not LOGICAL_ID_MASK);
 
-                      { Identifies the processor core - it’s not a value defined by Intel, rather it’s defined by us! }
+                      { Identifies the processor core - it’s not a value defined
+                        by Intel, rather it’s defined by us! }
                       if (PackCoreList.IndexOf(PACKAGE_CORE_ID) = -1) then
 					            begin
                         { Count the number of unique processor cores. }
@@ -3334,26 +3558,30 @@ begin
       end;
     end;
   except
-    { Some processors don’t support CPUID and so will raise exceptions when it is called. }
+    { Some processors don’t support CPUID and so will raise exceptions when it
+      is called. }
     ;
   end;
 
   if (Result = 0) then
   begin
-    { If we haven’t modified Result above, then assume that all logical processors are true physical processor cores. }
+    { If we haven’t modified Result above, then assume that all logical
+      processors are true physical processor cores. }
     Result := AvailableProcessorCount;
   end;
 end;
 {$WARNINGS ON}
 {$HINTS ON}
 
-function TCPUIdentificationEx.AvailableProcessorCount: Integer;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+function TCPUIdentificationEx.AvailableProcessorCount: SizeUInt;
 var
-  I: Integer;
+  I: SizeUInt;
   ProcessAffinityMask, SystemAffinityMask, Mask: PtrUInt;
   SysInfo: TSystemInfo;
 begin
-  if (GetProcessAffinityMask( GetCurrentProcess, ProcessAffinityMask, SystemAffinityMask)) then
+  if (GetProcessAffinityMask(GetCurrentProcess, @ProcessAffinityMask, @SystemAffinityMask)) then
   begin
     Result := 0;
 
@@ -3366,29 +3594,40 @@ begin
     end;
   end else
     begin
-      { Can’t get the affinity mask so we just report the total number of processors. }
+      { Can’t get the affinity mask so we just report the total number of
+        processors. }
+      ZeroMemory(@SysInfo, SizeOf(SysInfo));
       GetSystemInfo(SysInfo);
       Result := SysInfo.dwNumberOfProcessors;
     end;
 end;
 
-constructor TCPUIdentificationEx.Create(ProcessorID: Integer; DoInitialize, IncUnsupportedLeafs: Boolean);
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+constructor TCPUIdentificationEx.Create(ProcessorID: SizeUInt; DoInitialize, IncUnsupportedLeafs: Boolean);
 begin
+  { (1) Call inherited code. }
   inherited Create(False, IncUnsupportedLeafs);
 
+  { (2) Set FProcessorID. }
   FProcessorID := ProcessorID;
+
+  { (3) Set FPhysicalCoreCount and FLogicalCoreCount to 0. }
   FPhysicalCoreCount := 0;
   FLogicalCoreCount := 0;
 
-  If (DoInitialize) then
+  { (4) If not initialized, initialize now. }
+  if (DoInitialize) then
     Initialize;
 end;
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 procedure TCPUIdentificationEx.Initialize;
 var
   OldProcessorMask: PtrUInt;
 begin
-  If (ProcessorAvailable(fProcessorID)) then
+  if (ProcessorAvailable(FProcessorID)) then
   begin
     OldProcessorMask := SetThreadAffinity(SetBit(0, FProcessorID));
     try
@@ -3408,48 +3647,53 @@ begin
       if (FInfo.ProcessorFeatures.TSC) then
         { ... determine CPU speed and store it in FFrequencyInfo. }
         if (not GetCPUSpeed(FFrequencyInfo)) then
-          raise ECPUIdentification.Create(SInitialize_CannotDetermineCPUSpeed);
-{$ENDIF ~MSWINDOWS}
+          raise ECIDException.Create(SInitialize_CannotDetermineCPUSpeed);
+{$ENDIF !MSWINDOWS}
     end;
   end else
-    raise ECPUIdentification.CreateFmt(SInitialize_LogicalProcessorNotAvailable, [fProcessorID]);
+    raise ECIDException.CreateFmt(SInitialize_LogicalProcessorNotAvailable, [fProcessorID]);
 end;
 
-class function TCPUIdentificationEx.ProcessorAvailable(ProcessorID: Integer): Boolean;
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
+
+class function TCPUIdentificationEx.ProcessorAvailable(ProcessorID: SizeUInt): Boolean;
 var
   ProcessAffinityMask: PtrUInt;
 {$IFDEF Windows}
   SystemAffinityMask: PtrUInt;
 begin
-  if ((ProcessorID >= 0) and (ProcessorID < (SizeOf(PtrUInt) * 8))) then
+  if (ProcessorID < (SizeOf(PtrUInt) * 8)) then
   begin
-    if ({$IFDEF HAS_UNITSCOPE}Winapi.{$ENDIF}Windows.GetProcessAffinityMask(GetCurrentProcess, ProcessAffinityMask, SystemAffinityMask)) then
-      Result := GetBit(ProcessAffinityMask, ProcessorID)
+    if (GetProcessAffinityMask(GetCurrentProcess, @ProcessAffinityMask, @SystemAffinityMask)) then
+      Result := GetBit(ProcessAffinityMask,ProcessorID)
     else
-      raise ECPUIdentification.CreateFmt(SGetProcessAffinityMaskFailed, [GetLastError]);
+      raise ECIDException.CreateFmt(SGetProcessAffinityMaskFailed, [GetLastError]);
   end else
     Result := False;
 end;
-{$ELSE}
+{$ELSE !Windows}
 begin
   if ((ProcessorID >= 0) and (ProcessorID < (SizeOf(PtrUInt) * 8))) then
   begin
-    RaiseError(sched_getaffinity(getpid, SizeOf(ProcessAffinityMask), @ProcessAffinityMask), 'sched_getaffinity');
-
+    { sched_getaffinity called with process id (getpid) returns mask of main
+      thread (process mask). }
+    RaiseErrorErrNo(sched_getaffinity(getpid, SizeOf(ProcessAffinityMask), @ProcessAffinityMask), 'sched_getaffinity');
     Result := GetBit(ProcessAffinityMask, ProcessorID);
   end else
     Result := False;
 end;
-{$ENDIF ~Windows}
+{$ENDIF !Windows}
+
+{- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - }
 
 class function TCPUIdentificationEx.SetThreadAffinity(ProcessorMask: PtrUInt): PtrUInt;
 begin
 {$IFDEF Windows}
-  Result := {$IFDEF HAS_UNITSCOPE}Winapi.{$ENDIF}Windows.SetThreadAffinityMask(GetCurrentThread, ProcessorMask);
-{$ELSE}
+  Result := {$IFDEF HAS_UNITSCOPE}Winapi.Windows.SetThreadAffinityMask(GetCurrentThread, ProcessorMask);{$ELSE}SetThreadAffinityMask(GetCurrentThread, ProcessorMask);{$ENDIF}
+{$ELSE !Windows}
   RaiseError(pthread_getaffinity_np(pthread_self, SizeOf(Result), @Result), 'pthread_getaffinity_np');
   RaiseError(pthread_setaffinity_np(pthread_self, SizeOf(ProcessorMask), @ProcessorMask), 'pthread_setaffinity_np');
-{$ENDIF ~Windows}
+{$ENDIF !Windows}
 end;
 {$IFDEF SUPPORTS_REGION}{$ENDREGION}{$ENDIF}
 

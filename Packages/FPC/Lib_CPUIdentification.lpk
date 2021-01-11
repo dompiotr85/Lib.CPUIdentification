@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="4">
+    <PathDelim Value="\"/>
+    <Name Value="Lib_CPUIdentification"/>
+    <Author Value="Piotr Domański"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <IncludeFiles Value="..\..\Source\Include"/>
+        <OtherUnitFiles Value="..\..\Source"/>
+        <UnitOutputDirectory Value="..\..\Lib\FPC\$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+      <Parsing>
+        <Style Value="1"/>
+      </Parsing>
+    </CompilerOptions>
+    <Description Value="Small library designed to provide some basic parsed information (mainly CPU features) obtained by Processor Supplementary Instruction called CPUID instruction on x86(-64) processors. Should be compatible with any Windows and Linux system running on x86(-64) architecture."/>
+    <License Value="MPL-2.0"/>
+    <Version Minor="1" Release="3" Build="53"/>
+    <Files Count="2">
+      <Item1>
+        <Filename Value="..\..\Source\CPUIdentification.Consts.pas"/>
+        <UnitName Value="CPUIdentification.Consts"/>
+      </Item1>
+      <Item2>
+        <Filename Value="..\..\Source\CPUIdentification.pas"/>
+        <UnitName Value="CPUIdentification"/>
+      </Item2>
+    </Files>
+    <RequiredPkgs Count="3">
+      <Item1>
+        <PackageName Value="Lib_BasicClasses"/>
+        <MinVersion Minor="1" Release="3" Valid="True"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="Lib_TypeDefinitions"/>
+        <MinVersion Minor="1" Release="5" Valid="True"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="FCL"/>
+      </Item3>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
